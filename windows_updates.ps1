@@ -1,6 +1,8 @@
 #check if script has already run today
+$Path = "HKCU:\WindowsUpdatesLastCheck\"
+$WindowsUpdatesLastCheckDate = (Get-Date -Format "yyyy-MM-dd")
 
-if ((Get-ItemProperty "HKLM:\" -name "WindowsUpdatesLastCheck" | Select-Object -exp "WindowsUpdatesLastCheck") -ne (Get-Date -Format "yyyy-MM-dd") ) {
+if ((Get-ItemProperty $Path -name "WindowsUpdatesLastCheck" -ErrorAction SilentlyContinue | Select-Object -exp "WindowsUpdatesLastCheck") -ne (Get-Date -Format "yyyy-MM-dd") ) {
 
     # Start PowerShell with elevated priviliges
     if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Start-Process "wt.exe" "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit }
@@ -22,14 +24,12 @@ if ((Get-ItemProperty "HKLM:\" -name "WindowsUpdatesLastCheck" | Select-Object -
     Install-WindowsUpdate -AcceptAll -Install | Out-Null
 
     #Create registry file after script has run
-    $WindowsUpdatesLastCheckDate = (Get-Date -Format "yyyy-MM-dd")
-
-    if (!(Test-Path "HKLM:\")) {
-        New-Item -Path "HKLM:\" -Force | Out-Null
-        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path "HKLM:\" -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null
+    if (!(Test-Path $Path)) {
+        New-Item -Path $Path -Force | Out-Null
+        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path $Path -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null
     }
     else {
-        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path "HKLM:\" -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null | Out-Null
+        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path $Path -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null | Out-Null
     }
     function keypress_wait {
         param (
