@@ -1,60 +1,141 @@
-#check if script has already run today
+# Define the path to the script file for the scheduled task
+$scriptfile = 'C:\Users\jens\ProtonDrive\My files\Backup\Scripts\windows_updates.ps1'
+
+# Define the registry path to store the last update check date
 $RegistryPath = "HKCU:\WindowsUpdatesLastCheck\"
-$WindowsUpdatesLastCheckDate = (Get-Date -Format "yyyy-MM-dd")
 
-if ((Get-ItemProperty $RegistryPath -name "WindowsUpdatesLastCheck" -ErrorAction SilentlyContinue | Select-Object -exp "WindowsUpdatesLastCheck") -ne (Get-Date -Format "yyyy-MM-dd") ) {
+# Get the current date in the yyyy-MM-dd format
+$WindowsUpdatesLastCheckDate = Get-Date -Format "yyyy-MM-dd"
 
-    # Start PowerShell with elevated priviliges
-    if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { Start-Process "wt.exe" "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit }
+# Define custom console colors
+$consoleColors = @{
+    Green   = [System.ConsoleColor]::Green
+    Blue    = [System.ConsoleColor]::Blue
+    Magenta = [System.ConsoleColor]::Magenta
+    Cyan    = [System.ConsoleColor]::Cyan
+}
 
-    #create scheduled task
-    $scriptfile = 'C:\Users\jens\ProtonDrive\My files\Backup\Scripts\windows_updates.ps1'
-    $gettask = (Get-ScheduledTask -TaskName "windows_updates" -ErrorAction SilentlyContinue)
-    if (!$gettask) {
-        $trigger = New-ScheduledTaskTrigger -AtLogon
-        $User = ($env:COMPUTERNAME + "\" + $env:USERNAME)
-        $PS = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -NoLogo -NonInteractive -ExecutionPolicy Bypass -File `"$scriptfile`""
-        Register-ScheduledTask -TaskName "windows_updates" -Trigger $trigger -User $User -Action $PS
+function Update-Progress {
+    param (
+        [string]$Status,
+        [int]$PercentComplete
+    )
+    $progressParams.Status = $Status
+    $progressParams.PercentComplete = $PercentComplete
+    Write-Progress @progressParams
+    Write-Host $Status -ForegroundColor Yellow
+}
+
+# Check if the script has not run today
+if ((Get-ItemProperty $RegistryPath -Name "WindowsUpdatesLastCheck" -ErrorAction SilentlyContinue).WindowsUpdatesLastCheck -ne $WindowsUpdatesLastCheckDate) {
+    
+    # Check if the script is running with elevated privileges (as Administrator). If not running as Administrator, start a new elevated Windows Terminal instance and exit the current one.
+    if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) { 
+        Start-Process "wt.exe" "powershell -NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit 
     }
 
-    # Check if PSWindowsUpdate is installed
-    if (!(Test-Path "$Env:Programfiles\WindowsPowerShell\Modules\PSWindowsUpdate")) {
-        Write-Host "Installing Module PSWindowsUpdate" -ForegroundColor Yellow -BackgroundColor Black 
+    # Create ampty space for progress bar
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    Write-Host ""
+    
+    # Create a progress bar for the entire script
+    $host.privatedata.ProgressForegroundColor = "yellow";
+    $host.privatedata.ProgressBackgroundColor = "darkgray";
+    $progressParams = @{
+        Activity        = "Updating Windows"
+        Status          = "Initializing..."
+        PercentComplete = 0
+    }
+
+    Write-Progress @progressParams
+
+    Update-Progress -Status "Checking for scheduled task..." -PercentComplete 10
+
+    # Create a scheduled task to run the script at user logon if it doesn't already exist
+    if (-not (Get-ScheduledTask -TaskName "windows_updates" -ErrorAction SilentlyContinue)) {
+        $trigger = New-ScheduledTaskTrigger -AtLogon
+        $User = "$env:COMPUTERNAME\$env:USERNAME"
+        $PS = New-ScheduledTaskAction -Execute "PowerShell.exe" -Argument "-NoProfile -NoLogo -NonInteractive -ExecutionPolicy Bypass -File `"$scriptfile`""
+
+        # Attempt to register the task
+        $registeredTask = Register-ScheduledTask -TaskName "windows_updates" -Trigger $trigger -User $User -Action $PS -ErrorAction SilentlyContinue
+
+        if ($registeredTask) {
+            Update-Progress -Status "Scheduled task 'windows_updates' created successfully." -PercentComplete 30
+        }
+        else {
+            Update-Progress -Status "Failed to create the scheduled task 'windows_updates'." -PercentComplete 30
+        }
+    }
+
+    Update-Progress -Status "Checking for PSWindowsUpdate module..." -PercentComplete 40
+
+    # Check if PSWindowsUpdate module is installed; if not, install it
+    if (-not (Test-Path "$Env:ProgramFiles\WindowsPowerShell\Modules\PSWindowsUpdate")) {
+        Update-Progress -Status "Installing Module PSWindowsUpdate..." -PercentComplete 50
         Install-Module -Name PSWindowsUpdate -Force
     }
 
-    Write-Host "Updating winget apps" -ForegroundColor Cyan -BackgroundColor Black
+    Update-Progress -Status "Updating winget apps..." -PercentComplete 60
+    
+    # Update winget apps
     winget upgrade --all --silent --include-unknown
-    #winget source reset --force
-    Write-Host "Updating Windows Store Apps" -ForegroundColor Cyan -BackgroundColor Black
-    Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod | Out-Null
-    Write-Host "Searching for Windows Updates" -ForegroundColor Cyan -BackgroundColor Black
-    Get-WindowsUpdate
-    Write-Host "Installing Windows Updates" -ForegroundColor Cyan -BackgroundColor Black
-    Install-WindowsUpdate -AcceptAll -Install | Out-Null
+    # Uncomment the following line to reset the winget source if needed
+    # winget source reset --force
+    Write-Host "Winget apps updated." -ForegroundColor $consoleColors.Green
 
-    #Create registry value with current date
-    if (!(Test-Path $RegistryPath)) {
+    Update-Progress -Status "Updating Windows Store Apps..." -PercentComplete 70
+
+    # Update Windows Store Apps
+    Get-CimInstance -Namespace "Root\cimv2\mdm\dmmap" -ClassName "MDM_EnterpriseModernAppManagement_AppManagement01" | Invoke-CimMethod -MethodName UpdateScanMethod | Out-Null
+    Write-Host "Windows Store Apps updated." -ForegroundColor $consoleColors.Blue
+
+    Update-Progress -Status "Searching and installing Windows Updates..." -PercentComplete 80
+    
+    # Search for and install Windows Updates
+    Get-WindowsUpdate -AcceptAll -Install
+    Write-Host "Windows Updates installed." -ForegroundColor $consoleColors.Magenta
+
+    Update-Progress -Status "Updating registry..." -PercentComplete 90
+
+    # Create or update the registry value with the current date
+    if (-not (Test-Path $RegistryPath)) {
         New-Item -Path $RegistryPath -Force | Out-Null
-        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path $RegistryPath -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null
     }
-    else {
-        New-ItemProperty -Name "WindowsUpdatesLastCheck" -Path $RegistryPath -Force -PropertyType "String" -Value $WindowsUpdatesLastCheckDate | Out-Null | Out-Null
-    }
-    function keypress_wait {
-        param (
-            [int]$seconds = 60
-        )
-        $loops = $seconds * 10
-        Write-Host "Press any key to exit. (Window will automatically close in $seconds seconds.)" -ForegroundColor Yellow
-        for ($i = 0; $i -le $loops; $i++) {
-            if ([Console]::KeyAvailable) { break; }
-            Start-Sleep -Milliseconds 100
-        }
-        if ([Console]::KeyAvailable) { return [Console]::ReadKey($true); }
-        else { return $null ; }
-    }
-    keypress_wait
+
+    Set-ItemProperty -Path $RegistryPath -Name "WindowsUpdatesLastCheck" -Type String -Value $WindowsUpdatesLastCheckDate | Out-Null | Out-Null
+    Write-Host "Registry updated." -ForegroundColor $consoleColors.Cyan
+
+    Update-Progress -Status "Script completed." -PercentComplete 100
 }
 
-else {}
+# Wait for a keypress to exit (window will automatically close in 60 seconds)
+function keypress_wait {
+    param (
+        [int]$seconds = 60
+    )
+    $timeout = [System.Diagnostics.Stopwatch]::StartNew()
+    $timeoutInMilliseconds = $seconds * 1000
+    $message = "Press any key to exit. (Window will automatically close in $seconds seconds.)"
+    Write-Host $message -ForegroundColor Yellow
+
+    while ($true) {
+        if ([Console]::KeyAvailable) {
+            return [Console]::ReadKey($true)
+        }
+
+        if ($timeout.ElapsedMilliseconds -ge $timeoutInMilliseconds) {
+            return $null
+        }
+
+        Start-Sleep -Milliseconds 100
+    }
+}
+
+keypress_wait
