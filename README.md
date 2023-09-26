@@ -6,8 +6,8 @@ My attempt to automatically install Windows 11 / winget / Windows store apps upd
 If you got suggestions, let me know.
 
 # Description
-- Start powershell as Administrator
-- Install PowerShell module [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate)
-- Install Windows updates
-- Install [winget](https://github.com/microsoft/winget-cli) updates
-- Install Windows Store app updates
+- Starts PowerShell with elevated privileges
+- Installs PowerShell module [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate)
+- Installs Windows updates
+- Installs [winget](https://github.com/microsoft/winget-cli) updates
+- Installs Windows Store app updates
