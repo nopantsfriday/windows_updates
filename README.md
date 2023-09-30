@@ -10,9 +10,8 @@ If you got suggestions, let me know.
 - Execute the script
 
 # Description
-- Creates a Windows scheduled task which runs the script after the user logs in to Windows
-- Starts PowerShell with elevated privileges
-- Installs PowerShell module [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate)
-- Installs [winget](https://github.com/microsoft/winget-cli) updates
-- Installs Windows Store app updates
-- Installs Windows updates
+- Start powershell as Administrator
+- Install PowerShell module [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate)
+- Install Windows updates
+- Install [winget](https://github.com/microsoft/winget-cli) updates
+- Install Windows Store app updates
