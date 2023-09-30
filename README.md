@@ -11,6 +11,7 @@ If you got suggestions, let me know.
 
 # Description
 - Start powershell as Administrator
+- Create scheduled task which uses the currents script location and executes the script when a user logs in to Windows
 - Install PowerShell module [PSWindowsUpdate](https://www.powershellgallery.com/packages/PSWindowsUpdate)
 - Install Windows updates
 - Install [winget](https://github.com/microsoft/winget-cli) updates
