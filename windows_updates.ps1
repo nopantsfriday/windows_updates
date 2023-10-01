@@ -99,12 +99,12 @@ if ((Get-ItemProperty $RegistryPath -Name "WindowsUpdatesLastCheck" -ErrorAction
         # Attempt to register the task
         $registeredTask = Register-ScheduledTask -TaskName "windows_updates" -Trigger $trigger -User $User -Action $PS -RunLevel Highest -ErrorAction SilentlyContinue
 
-        if ($registeredTask) {
-            Update-Progress -Status "Scheduled task 'windows_updates' created successfully." -PercentComplete 30 -TextColor Green
-        }
-        else {
-            Update-Progress -Status "Failed to create the scheduled task 'windows_updates'." -PercentComplete 30 -TextColor Red
-        }
+    }
+    if (Get-ScheduledTask -TaskName "windows_updates") {
+        Update-Progress -Status "Scheduled task 'windows_updates' created successfully." -PercentComplete 30 -TextColor Green
+    }
+    else {
+        Update-Progress -Status "Failed to create the scheduled task 'windows_updates'." -PercentComplete 30 -TextColor Red
     }
 
     Update-Progress -Status "Checking for PSWindowsUpdate module..." -PercentComplete 40
